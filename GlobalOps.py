@@ -249,7 +249,7 @@ if analyze_btn:
                 "4. **기준 제외:** 사용자가 선택한 Master Language 파일은 **절대 분석 대상에 포함하지 마라.** (Reference ONLY)"
             )
             
-            # 4. 유저 프롬프트 (누락 판정 기준 완화)
+            # 4. 유저 프롬프트 (줄바꿈/문단 유지 지시 추가)
             user_prompt = f"""
             [Uploaded Files]
             {files_context}
@@ -260,17 +260,21 @@ if analyze_btn:
             
             3. **Execute QA (For each Target file):**
                - **Step 1 (Strict Quality Check - Go/No-Go):**
-                 - **CRITICAL FAILURE CONDITIONS (Trigger 'critical_rewrite_needed: true'):**
+                 - **CRITICAL FAILURE CONDITIONS:**
                    1. **Garbage Quality:** Slang, Broken Grammar, AI-translated feeling.
                    2. **Regional Dialects:** (e.g., 'Hello po', 'Do the needful'). CRITICAL FAILURE.
                    3. **Tone Mismatch:** Too casual or too archaic.
-                   4. **EXTREME Omission:** **Only if MORE THAN 50% of the content is missing.** (If the file is mostly empty).
+                   4. **EXTREME Omission:** **Only if MORE THAN 50% of the content is missing.**
                  
-                 - **PASS CONDITIONS (Even if imperfect):**
-                   - If the translation is generally good but **misses 1~3 sentences**, it is **NOT** a critical failure. -> **Set `critical_rewrite_needed: false`.**
+                 - **PASS CONDITIONS:**
+                   - If the translation is generally good but misses 1~3 sentences, it is **NOT** a critical failure. -> Set `critical_rewrite_needed: false`.
 
                  - **Decision:**
-                   - IF FAILED: Set `critical_rewrite_needed: true`, Write `full_rewrite`, Leave `improvements` EMPTY.
+                   - IF FAILED: 
+                     - Set `critical_rewrite_needed: true`.
+                     - **Write `full_rewrite` (Standard Business Professional Tone).**
+                     - **[IMPORTANT] MUST preserve the exact paragraph structure and line breaks (\\n) of the Master file.**
+                     - Leave `improvements` EMPTY.
                    - IF PASSED: Set `critical_rewrite_needed: false`, Proceed to Step 2.
 
                - **Step 2 (Detail Inspection & Omission Check):**
@@ -293,15 +297,8 @@ if analyze_btn:
                         "tone_comparison": "평가 (한국어)",
                         "cultural_nuance": "평가 (한국어)",
                         "critical_rewrite_needed": true/false, 
-                        "full_rewrite": "[[ONLY IF NEEDED]]",
-                        "improvements": [
-                            {{
-                                "original": "[[KOREAN TEXT]]", 
-                                "current": "[[TARGET TEXT or '⚠️ (MISSING CONTENT) ']]", 
-                                "suggestion": "[[CORRECTED TEXT]]", 
-                                "reason": "..."
-                            }}
-                        ]
+                        "full_rewrite": "[[Text with strict line breaks (\\n)]]",
+                        "improvements": [...]
                     }}
                 ]
             }}
@@ -378,5 +375,6 @@ if analyze_btn:
 
                 except Exception as e:
                     st.error(f"오류: {str(e)}")
+
 
 
