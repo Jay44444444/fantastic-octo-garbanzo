@@ -231,25 +231,29 @@ if analyze_btn:
                 "4. **기준 제외:** 사용자가 선택한 Master Language 파일은 **절대 분석 대상에 포함하지 마라.** (Reference ONLY)"
             )
             
-            # 4. 유저 프롬프트 (Master 언어 변수 {master_lang} 명시)
+            # 4. 유저 프롬프트 (지역 방언 처단 & 한국어 매핑 강제)
             user_prompt = f"""
             [Uploaded Files]
             {files_context}
             
             **[Analysis Steps]**
-            1. **Identify Master:** File for '{master_lang}'. (This is Reference ONLY. DO NOT Analyze.)
+            1. **Identify Master:** File for '{master_lang}'. (Reference ONLY. DO NOT Analyze.)
             2. **Identify Targets:** Analyze ALL other files (Target Languages).
             
             3. **Execute QA (For each Target file):**
-               - **Step 1 (Quality Check):** Is this text usable?
-                 - IF TERRIBLE (Slang, Broken Grammar, Wrong Tone): 
-                   - Set `critical_rewrite_needed: true`.
-                   - Write `full_rewrite` (Business Professional Tone).
-                   - **Leave `improvements` EMPTY.** (Do not list errors).
-                 - IF OKAY (Minor errors): 
-                   - Set `critical_rewrite_needed: false`.
-                   - List `improvements` one by one.
-                   - Ensure System Alerts are included.
+               - **Step 1 (Strict Quality Check):**
+                 - **CRITICAL FAILURE CONDITIONS:**
+                   1. Contains Slang, Broken Grammar, or AI-translated feeling.
+                   2. **Regional Dialects:** (e.g., 'Hello po' (Philippines), 'Do the needful' (India), 'Singlish'). **Even if grammatically correct, if it sounds regional, it is a CRITICAL FAILURE.**
+                   3. Tone Mismatch: Too casual or too archaic.
+                 - **IF FAILED:** - Set `critical_rewrite_needed: true`.
+                   - Write `full_rewrite` (Standard Business Professional Tone).
+                   - **Leave `improvements` EMPTY.**
+                 - **IF PASSED (Minor edits only):** - Set `critical_rewrite_needed: false`.
+                   - List `improvements`.
+               
+               - **Step 2 (Mapping):**
+                 - When listing `improvements`, the `"original"` field MUST be the corresponding sentence from the **MASTER ({master_lang})** file. **NEVER** use the Target language text in the `"original"` field.
             
             **[JSON Output Format]**
             {{
@@ -258,13 +262,16 @@ if analyze_btn:
                         "language": "Target Language",
                         "filename": "Filename",
                         "score": "Star Rating (1~5)",
-                        "tone_comparison": "평가 (한국어, 왜 재작성이 필요한지 설명)",
+                        "tone_comparison": "평가 (한국어)",
                         "cultural_nuance": "평가 (한국어)",
                         "critical_rewrite_needed": true/false, 
-                        "full_rewrite": "[[ONLY IF NEEDED: The completely rewritten text]]",
+                        "full_rewrite": "[[ONLY IF NEEDED]]",
                         "improvements": [
                             {{
-                                "original": "...", "current": "...", "suggestion": "...", "reason": "..."
+                                "original": "[[MUST BE KOREAN TEXT FROM MASTER]]", 
+                                "current": "[[TARGET TEXT]]", 
+                                "suggestion": "[[CORRECTED TEXT]]", 
+                                "reason": "..."
                             }}
                         ]
                     }}
@@ -342,4 +349,5 @@ if analyze_btn:
                         st.warning("결과 없음.")
 
                 except Exception as e:
+
                     st.error(f"오류: {str(e)}")
