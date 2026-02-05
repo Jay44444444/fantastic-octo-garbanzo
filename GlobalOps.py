@@ -40,13 +40,31 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 파일 읽기 헬퍼 ---
+# --- [수정됨] 파일 읽기 헬퍼 (표 내용 포함) ---
 def read_file_content(uploaded_file):
     try:
         if uploaded_file.type == "text/plain":
             return uploaded_file.getvalue().decode("utf-8")
         elif "wordprocessingml" in uploaded_file.type or uploaded_file.name.endswith('.docx'):
             doc = Document(uploaded_file)
-            return '\n'.join([para.text for para in doc.paragraphs])
+            full_text = []
+            
+            # 1. 본문(Paragraphs) 읽기
+            for para in doc.paragraphs:
+                full_text.append(para.text)
+                
+            # 2. 표(Tables) 내용 읽기
+            for table in doc.tables:
+                for row in table.rows:
+                    row_data = []
+                    for cell in row.cells:
+                        # 셀 안에도 여러 문단이 있을 수 있음
+                        cell_text = ' '.join([p.text for p in cell.paragraphs])
+                        row_data.append(f"[{cell_text}]") # 셀 구분감(Bracket) 추가
+                    # 행 단위로 묶어서 추가 (표 모양 흉내)
+                    full_text.append(" | ".join(row_data))
+            
+            return '\n'.join(full_text)
         else:
             return "지원하지 않는 파일 형식입니다."
     except Exception as e:
@@ -231,7 +249,7 @@ if analyze_btn:
                 "4. **기준 제외:** 사용자가 선택한 Master Language 파일은 **절대 분석 대상에 포함하지 마라.** (Reference ONLY)"
             )
             
-            # 4. 유저 프롬프트 (지역 방언 처단 & 한국어 매핑 강제)
+            # 4. 유저 프롬프트 (누락 감지 로직 추가)
             user_prompt = f"""
             [Uploaded Files]
             {files_context}
@@ -242,18 +260,28 @@ if analyze_btn:
             
             3. **Execute QA (For each Target file):**
                - **Step 1 (Strict Quality Check):**
-                 - **CRITICAL FAILURE CONDITIONS:**
+                 - **CRITICAL FAILURE CONDITIONS (Trigger 'critical_rewrite_needed: true'):**
                    1. Contains Slang, Broken Grammar, or AI-translated feeling.
-                   2. **Regional Dialects:** (e.g., 'Hello po' (Philippines), 'Do the needful' (India), 'Singlish'). **Even if grammatically correct, if it sounds regional, it is a CRITICAL FAILURE.**
+                   2. **Regional Dialects:** (e.g., 'Hello po', 'Do the needful'). CRITICAL FAILURE.
                    3. Tone Mismatch: Too casual or too archaic.
+                   4. **Massive Omission:** If more than 30% of the content is missing compared to Master.
+                 
                  - **IF FAILED:** - Set `critical_rewrite_needed: true`.
-                   - Write `full_rewrite` (Standard Business Professional Tone).
+                   - Write `full_rewrite`.
                    - **Leave `improvements` EMPTY.**
-                 - **IF PASSED (Minor edits only):** - Set `critical_rewrite_needed: false`.
-                   - List `improvements`.
-               
-               - **Step 2 (Mapping):**
-                 - When listing `improvements`, the `"original"` field MUST be the corresponding sentence from the **MASTER ({master_lang})** file. **NEVER** use the Target language text in the `"original"` field.
+
+                 - **IF PASSED (Quality is fine, but needs minor fixes):** - Set `critical_rewrite_needed: false`.
+                   - **Proceed to Step 2.**
+
+               - **Step 2 (Detail Inspection & Omission Check):**
+                 - List `improvements` for typos, wrong terms, or **Missing Sentences**.
+                 - **[IMPORTANT] Handling Omissions:**
+                   - If a specific sentence exists in Master but is MISSING in Target:
+                   - `original`: "[[Master Sentence]]"
+                   - `current`: "⚠️ (MISSING CONTENT)"
+                   - `suggestion`: "[[Translated Sentence to add]]"
+                   - `reason`: "Content omitted from Master file."
+                 - **Mapping Rule:** The `"original"` field MUST ALWAYS be the Korean text from Master.
             
             **[JSON Output Format]**
             {{
@@ -268,8 +296,8 @@ if analyze_btn:
                         "full_rewrite": "[[ONLY IF NEEDED]]",
                         "improvements": [
                             {{
-                                "original": "[[MUST BE KOREAN TEXT FROM MASTER]]", 
-                                "current": "[[TARGET TEXT]]", 
+                                "original": "[[KOREAN TEXT]]", 
+                                "current": "[[TARGET TEXT or '⚠️ (MISSING CONTENT) ']]", 
                                 "suggestion": "[[CORRECTED TEXT]]", 
                                 "reason": "..."
                             }}
@@ -349,5 +377,4 @@ if analyze_btn:
                         st.warning("결과 없음.")
 
                 except Exception as e:
-
                     st.error(f"오류: {str(e)}")
