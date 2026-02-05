@@ -1,1 +1,7 @@
+streamlit
+openai
+google-generativeai
+mistralai
+pandas
 python-docx
+openpyxl
