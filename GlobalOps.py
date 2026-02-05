@@ -249,7 +249,7 @@ if analyze_btn:
                 "4. **기준 제외:** 사용자가 선택한 Master Language 파일은 **절대 분석 대상에 포함하지 마라.** (Reference ONLY)"
             )
             
-            # 4. 유저 프롬프트 (누락 감지 로직 추가)
+            # 4. 유저 프롬프트 (누락 판정 기준 완화)
             user_prompt = f"""
             [Uploaded Files]
             {files_context}
@@ -259,24 +259,24 @@ if analyze_btn:
             2. **Identify Targets:** Analyze ALL other files (Target Languages).
             
             3. **Execute QA (For each Target file):**
-               - **Step 1 (Strict Quality Check):**
+               - **Step 1 (Strict Quality Check - Go/No-Go):**
                  - **CRITICAL FAILURE CONDITIONS (Trigger 'critical_rewrite_needed: true'):**
-                   1. Contains Slang, Broken Grammar, or AI-translated feeling.
+                   1. **Garbage Quality:** Slang, Broken Grammar, AI-translated feeling.
                    2. **Regional Dialects:** (e.g., 'Hello po', 'Do the needful'). CRITICAL FAILURE.
-                   3. Tone Mismatch: Too casual or too archaic.
-                   4. **Massive Omission:** If more than 30% of the content is missing compared to Master.
+                   3. **Tone Mismatch:** Too casual or too archaic.
+                   4. **EXTREME Omission:** **Only if MORE THAN 50% of the content is missing.** (If the file is mostly empty).
                  
-                 - **IF FAILED:** - Set `critical_rewrite_needed: true`.
-                   - Write `full_rewrite`.
-                   - **Leave `improvements` EMPTY.**
+                 - **PASS CONDITIONS (Even if imperfect):**
+                   - If the translation is generally good but **misses 1~3 sentences**, it is **NOT** a critical failure. -> **Set `critical_rewrite_needed: false`.**
 
-                 - **IF PASSED (Quality is fine, but needs minor fixes):** - Set `critical_rewrite_needed: false`.
-                   - **Proceed to Step 2.**
+                 - **Decision:**
+                   - IF FAILED: Set `critical_rewrite_needed: true`, Write `full_rewrite`, Leave `improvements` EMPTY.
+                   - IF PASSED: Set `critical_rewrite_needed: false`, Proceed to Step 2.
 
                - **Step 2 (Detail Inspection & Omission Check):**
                  - List `improvements` for typos, wrong terms, or **Missing Sentences**.
                  - **[IMPORTANT] Handling Omissions:**
-                   - If a specific sentence exists in Master but is MISSING in Target:
+                   - If a sentence exists in Master but is MISSING in Target:
                    - `original`: "[[Master Sentence]]"
                    - `current`: "⚠️ (MISSING CONTENT)"
                    - `suggestion`: "[[Translated Sentence to add]]"
@@ -378,4 +378,5 @@ if analyze_btn:
 
                 except Exception as e:
                     st.error(f"오류: {str(e)}")
+
 
