@@ -183,7 +183,7 @@ with st.sidebar:
         """)
         
 # --- 메인 화면 ---
-st.markdown('<div class="main-header">⚖️ 글로벌 톤앤매너 싱크로율 측정기</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">⚖️ 공지사항 내용 비교 도우미</div>', unsafe_allow_html=True)
 col_main, col_ctrl = st.columns([1.8, 1.2])
 
 with col_main:
@@ -378,3 +378,4 @@ if analyze_btn:
 
                 except Exception as e:
                     st.error(f"오류: {str(e)}")
+
