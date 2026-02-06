@@ -179,6 +179,7 @@ with st.sidebar:
     # [NEW] 사용 가이드 추가
     with st.expander("❓ 사용 방법 (How to Use)"):
         st.markdown("""
+        0. 사용하고자 하는 AI 종류와 키를 넣은 뒤 Enter를 눌러주세요. Gemini가 한 번에 읽는 량이 많아서 체크에 적합합니다.
         1. **파일 업로드:** 공지사항 원문(한국어)과 번역본 파일들을 **모두** 좌측에 드래그하세요.
         2. **언어 설정:** 우측에서 '기준(Master) 언어'를 선택하세요. (보통 '한국어')
         3. **금지어 추가:**
@@ -399,5 +400,6 @@ if analyze_btn:
 
                 except Exception as e:
                     st.error(f"오류: {str(e)}")
+
 
 
