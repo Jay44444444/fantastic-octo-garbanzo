@@ -238,10 +238,10 @@ if analyze_btn:
 
                 files_context += f"\n\n--- FILE START ---\nFilename: {up_file.name}\nContent:\n{content}{violation_alert}\n--- FILE END ---"
 
-            # 3. 시스템 프롬프트 (기준 언어 제외 룰 복구 & 재작성 로직 유지)
+            # 3. 시스템 프롬프트 (재작성 기준 대폭 강화: 50% 룰 삭제)
             system_role = (
                 "너는 글로벌 게임 서비스의 **'가장 꼼꼼하고 지독한'** Localization QA Lead다.\n"
-                "너의 임무는 텍스트를 검수하고, 상태가 심각하면 **아예 새로 작성(Total Rewrite)**하는 것이다.\n\n"
+                "너의 임무는 텍스트를 검수하고 오류를 찾아내는 것이다.\n\n"
                 
                 "**[🚨 금지어 리스트 (Active Rules)]**\n"
                 f"{final_rules_text}\n\n"
@@ -250,15 +250,17 @@ if analyze_btn:
                 "1. **이중 검수 (Dual Inspection):**\n"
                 "   - A. **시스템 적발:** `[🚨 SYSTEM DETECTED]`에 있는 단어는 무조건 리포트해라.\n"
                 "   - B. **AI 심층 검수:** 문법, 톤앤매너, 뉘앙스 오류를 찾아라.\n"
-                "2. **전면 재작성 판단 (Critical Failure Check):**\n"
-                "   - 만약 텍스트가 수정 불가능할 정도로 엉망이거나(예: Little Jacob 스타일 슬랭, 기계 번역 투, 톤앤매너 완전 붕괴) 수정 범위가 50%를 넘는다면...\n"
-                "   - **`critical_rewrite_needed: true`**를 설정하고 **완벽하게 새로 쓴 텍스트(full_rewrite)**를 작성해라.\n"
-                "   - **[중요]** 이때 `improvements` 리스트는 **빈 배열([])**로 남겨라. (폐기할 텍스트를 굳이 고치지 마라)\n"
+                
+                "2. **전면 재작성 (Full Rewrite) 발동 기준 [매우 엄격]:**\n"
+                "   - **절대로 쉽게 재작성을 제안하지 마라.**\n"
+                "   - 오타가 많거나, 욕설이 있거나, 문법이 틀린 것은 **'개선 제안(Improvements)'** 대상이지, 재작성 대상이 아니다.\n"
+                "   - **재작성 대상은 오직:** 읽을 수 없는 수준의 기계 번역(Gibberish), 완전히 다른 언어, 또는 내용 자체가 아예 틀린 경우뿐이다.\n"
+                
                 "3. **평가:** 평가는 한국어로 구체적으로 작성해라.\n"
                 "4. **기준 제외:** 사용자가 선택한 Master Language 파일은 **절대 분석 대상에 포함하지 마라.** (Reference ONLY)"
             )
             
-            # 4. 유저 프롬프트 (한국어 코멘트 강제 & 대소문자 관대함 적용)
+            # 4. 유저 프롬프트 (욕설/오타 명시적 예외 처리 추가)
             user_prompt = f"""
             [Uploaded Files]
             {files_context}
@@ -270,32 +272,31 @@ if analyze_btn:
             3. **Execute QA (For each Target file):**
                - **Step 1 (Strict Quality Check - Go/No-Go):**
                  - **CRITICAL FAILURE CONDITIONS (Trigger 'critical_rewrite_needed: true'):**
-                   1. **Garbage Quality:** Completely broken English, non-sense text, or severe AI hallucinations.
-                   2. **Regional Dialects:** (e.g., 'Hello po', 'Do the needful'). CRITICAL FAILURE.
-                   3. **Meaning Corruption:** If the *key information* (dates, item names) is completely wrong compared to Master.
+                   1. **Unintelligible Gibberish:** Random characters (e.g., "asdf jkl"), broken encoding, or text that makes ZERO sense.
+                   2. **Wrong Language:** (e.g., French text in an English file).
+                   3. **Severe AI Hallucination:** Text completely unrelated to the game context.
                  
-                 - **[IMPORTANT] EXCEPTIONS (DO NOT REWRITE - PASS THESE):**
-                   - **Localization Differences:** If the English is natural but structured differently (e.g., Master uses a link, but Target has full text), this is **GOOD localization**. -> **PASS**.
-                   - **Tone Variance:** If Master is polite (Korean style) but Target is direct/functional (Western Game style), this is **ACCEPTABLE**. -> **PASS**.
+                 - **[IMPORTANT] EXCEPTIONS (DO NOT REWRITE - List in Step 2):**
+                   - **Profanity/Slang:** Even if the text contains F-words or severe swearing, do **NOT** rewrite. Report them as "🚫 Profanity Detected" in Step 2.
+                   - **Heavy Typos/Grammar Errors:** Even if 50% of sentences have typos, do **NOT** rewrite. Fix them line-by-line in Step 2.
+                   - **Localization Differences:** Structural differences (Link vs Text) are **PASS**.
+                   - **Tone Variance:** Polite vs Direct style is **PASS**.
                    - **Numerical Errors:** Wrong numbers are **NOT** critical failures.
-                   - **Partial/Massive Omissions:** Even if content is missing or added (for localization), do **NOT** rewrite.
 
                  - **Decision:**
-                   - IF FAILED (Only for Garbage/Dialect/Meaning Corruption): 
+                   - IF FAILED (Only for Gibberish/Wrong Lang): 
                      - Set `critical_rewrite_needed: true`.
                      - Write `full_rewrite`.
                      - Leave `improvements` EMPTY.
-                   - IF PASSED (Most cases): Set `critical_rewrite_needed: false`, Proceed to Step 2.
+                   - IF PASSED (Even with profanity/typos): Set `critical_rewrite_needed: false`, Proceed to Step 2.
 
                - **Step 2 (Detail Inspection & Numerical Check):**
-                 - List `improvements` for typos, wrong terms, or **Missing Sentences**.
+                 - List `improvements` for typos, wrong terms, **Profanity**, or **Missing Sentences**.
                  
-                 - **[RULE] Capitalization:** - **IGNORE** capitalization differences (e.g., 'element' vs 'Element', 'Guardian' vs 'guardian') unless it is a grammatical error (e.g., lowercase at the start of a sentence).
-                   - Do NOT report stylistic capitalization issues.
+                 - **[RULE] Capitalization:** - **IGNORE** capitalization differences unless it is a grammatical error.
 
                  - **[CRITICAL] Numerical Check:** - Compare ALL numbers (dates, stats, currency, probabilities).
                    - **Example:** If Master says "10/30" but Target says "11/1", REPORT IT.
-                   - **Example:** If Master says "prob 1%" but Target says "4%", REPORT IT.
 
                  - **[CRITICAL] Handling Content Differences:**
                    - If specific info exists in Master but is MISSING in Target -> Report as "⚠️ (MISSING CONTENT)".
@@ -318,7 +319,7 @@ if analyze_btn:
                                 "original": "[[KOREAN TEXT]]", 
                                 "current": "[[TARGET TEXT]]", 
                                 "suggestion": "[[CORRECTED TEXT]]", 
-                                "reason": "[[MUST BE IN KOREAN]] (e.g. 날짜 불일치, 내용 누락, 오타 등)"
+                                "reason": "[[MUST BE IN KOREAN]] (e.g. 욕설 포함, 오타, 숫자 불일치)"
                             }}
                         ]
                     }}
@@ -397,3 +398,4 @@ if analyze_btn:
 
                 except Exception as e:
                     st.error(f"오류: {str(e)}")
+
