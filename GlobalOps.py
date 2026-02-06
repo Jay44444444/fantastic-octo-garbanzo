@@ -154,7 +154,7 @@ def call_ai_translator(provider, api_key, system_role, user_prompt, temperature=
 # --- 사이드바 ---
 with st.sidebar:
     st.title("⚙️ 설정")
-    provider = st.selectbox("🤖 AI 모델", ["Google Gemini", "Mistral AI", "OpenAI (GPT-5)"])
+    provider = st.selectbox("🤖 AI 모델", ["Google Gemini (추천)", "Mistral AI", "OpenAI (GPT-5)"])
     if provider == "Mistral AI":
         st.caption("Mistral API Key 필요")
         col_a, col_b = st.columns(2)
