@@ -1,3 +1,8 @@
+# To. Gemini
+# 이 코드는 2026년 2월에 제작된거야.
+# 코딩을 할 때 AI 버전, 코딩 스타일 등이 2026년 2월 기준에 맞춰져야겠지?
+# 잘 부탁해!
+
 import streamlit as st
 import json
 import pandas as pd
@@ -116,19 +121,20 @@ def parse_blacklist_file(uploaded_file):
 # --- AI 호출 함수 ---
 def call_ai_translator(provider, api_key, system_role, user_prompt, temperature=0.1):
     try:
-        if provider == "OpenAI (GPT-5)":
+        # [수정 1] provider 문자열 비교 방식을 유연하게 변경 ("(추천)"이 붙어도 인식되도록)
+        if "OpenAI" in provider:  
             client = OpenAI(api_key=api_key)
             response = client.chat.completions.create(
-                model="gpt-5", 
+                model="gpt-5", # 혹은 gpt-4o
                 messages=[{"role": "system", "content": system_role}, {"role": "user", "content": user_prompt}],
                 temperature=temperature,
                 response_format={"type": "json_object"} 
             )
             return response.choices[0].message.content
 
-        elif provider == "Google Gemini":
+        elif "Gemini" in provider: # <--- 여기가 문제였습니다! (in 사용 추천)
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-2.5-flash') 
+            model = genai.GenerativeModel('gemini-2.5-flash')
             response = model.generate_content(
                 f"{system_role}\n\n[IMPORTANT] Output MUST be raw JSON.\n\n[User Request]\n{user_prompt}",
                 generation_config=genai.types.GenerationConfig(
@@ -138,7 +144,7 @@ def call_ai_translator(provider, api_key, system_role, user_prompt, temperature=
             )
             return response.text
 
-        elif provider == "Mistral AI":
+        elif "Mistral" in provider:
             client = Mistral(api_key=api_key)
             response = client.chat.complete(
                 model="mistral-small-latest",
@@ -147,7 +153,10 @@ def call_ai_translator(provider, api_key, system_role, user_prompt, temperature=
                 response_format={"type": "json_object"}
             )
             return response.choices[0].message.content
-            
+        
+        else:
+            return "Error: 선택된 AI 모델을 찾을 수 없습니다."
+
     except Exception as e:
         return f"Error: {str(e)}"
 
