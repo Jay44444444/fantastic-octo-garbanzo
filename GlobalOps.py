@@ -8,7 +8,7 @@ import google.generativeai as genai
 from mistralai import Mistral
 
 # --- 페이지 설정 ---
-st.set_page_config(page_title="Global Ops Sync (Hybrid)", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="틀린 공지 찾기", page_icon="🛡️", layout="wide")
 
 # ==========================================
 # 🛠️ [GM 영역] 프로젝트별 금칙어 데이터베이스
@@ -116,10 +116,10 @@ def parse_blacklist_file(uploaded_file):
 # --- AI 호출 함수 ---
 def call_ai_translator(provider, api_key, system_role, user_prompt, temperature=0.1):
     try:
-        if provider == "OpenAI (GPT-4o)":
+        if provider == "OpenAI (GPT-5)":
             client = OpenAI(api_key=api_key)
             response = client.chat.completions.create(
-                model="gpt-4o", 
+                model="gpt-5", 
                 messages=[{"role": "system", "content": system_role}, {"role": "user", "content": user_prompt}],
                 temperature=temperature,
                 response_format={"type": "json_object"} 
@@ -154,7 +154,7 @@ def call_ai_translator(provider, api_key, system_role, user_prompt, temperature=
 # --- 사이드바 ---
 with st.sidebar:
     st.title("⚙️ 설정")
-    provider = st.selectbox("🤖 AI 모델", ["Google Gemini", "Mistral AI", "OpenAI (GPT-4o)"])
+    provider = st.selectbox("🤖 AI 모델", ["Google Gemini", "Mistral AI", "OpenAI (GPT-5)"])
     if provider == "Mistral AI":
         st.caption("Mistral API Key 필요")
         col_a, col_b = st.columns(2)
@@ -183,7 +183,7 @@ with st.sidebar:
         """)
         
 # --- 메인 화면 ---
-st.markdown('<div class="main-header">⚖️ 공지사항 내용 비교 도우미</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">⚖️ 틀린 공지 찾기</div>', unsafe_allow_html=True)
 col_main, col_ctrl = st.columns([1.8, 1.2])
 
 with col_main:
@@ -388,5 +388,3 @@ if analyze_btn:
 
                 except Exception as e:
                     st.error(f"오류: {str(e)}")
-
-
