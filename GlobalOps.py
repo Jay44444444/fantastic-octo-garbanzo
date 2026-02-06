@@ -249,7 +249,7 @@ if analyze_btn:
                 "4. **기준 제외:** 사용자가 선택한 Master Language 파일은 **절대 분석 대상에 포함하지 마라.** (Reference ONLY)"
             )
             
-            # 4. 유저 프롬프트 (누락은 절대 재작성 금지 -> 리스트업 모드)
+            # 4. 유저 프롬프트 (현지화 구조 차이 허용 & 재작성 기준 완화)
             user_prompt = f"""
             [Uploaded Files]
             {files_context}
@@ -261,37 +261,34 @@ if analyze_btn:
             3. **Execute QA (For each Target file):**
                - **Step 1 (Strict Quality Check - Go/No-Go):**
                  - **CRITICAL FAILURE CONDITIONS (Trigger 'critical_rewrite_needed: true'):**
-                   1. **Garbage Quality:** Slang, Broken Grammar, AI-translated feeling.
+                   1. **Garbage Quality:** Completely broken English, non-sense text, or severe AI hallucinations.
                    2. **Regional Dialects:** (e.g., 'Hello po', 'Do the needful'). CRITICAL FAILURE.
-                   3. **Tone Mismatch:** Too casual or too archaic.
-                   
-                 - **[IMPORTANT] EXCEPTIONS (DO NOT REWRITE):**
+                   3. **Meaning Corruption:** If the *key information* (dates, item names) is completely wrong compared to Master.
+                 
+                 - **[IMPORTANT] EXCEPTIONS (DO NOT REWRITE - PASS THESE):**
+                   - **Localization Differences:** If the English is natural but structured differently (e.g., Master uses a link, but Target has full text), this is **GOOD localization**. -> **PASS**.
+                   - **Tone Variance:** If Master is polite (Korean style) but Target is direct/functional (Western Game style), this is **ACCEPTABLE**. -> **PASS**.
                    - **Numerical Errors:** Wrong numbers are **NOT** critical failures.
-                   - **MISSING CONTENT (OMISSIONS):** Even if a LARGE portion (e.g., >50%) of the content is missing, do **NOT** trigger a full rewrite.
-                   - -> **Logic:** Omission is not a quality issue, it is a completion issue.
-                   - -> **Action:** Set `critical_rewrite_needed: false` and list EVERY missing part in Step 2.
+                   - **Partial/Massive Omissions:** Even if content is missing or added (for localization), do **NOT** rewrite.
 
                  - **Decision:**
-                   - IF FAILED (Quality/Tone issue): 
+                   - IF FAILED (Only for Garbage/Dialect/Meaning Corruption): 
                      - Set `critical_rewrite_needed: true`.
                      - Write `full_rewrite`.
-                     - **[IMPORTANT] MUST preserve the exact paragraph structure and line breaks (\\n) of the Master file.**
                      - Leave `improvements` EMPTY.
-                   - IF PASSED (Even with missing content): Set `critical_rewrite_needed: false`, Proceed to Step 2.
+                   - IF PASSED (Most cases): Set `critical_rewrite_needed: false`, Proceed to Step 2.
 
-               - **Step 2 (Detail Inspection & Numerical/Omission Check):**
+               - **Step 2 (Detail Inspection & Numerical Check):**
                  - List `improvements` for typos, wrong terms, or **Missing Sentences**.
                  
-                 - **[CRITICAL] Numerical Check:** - Compare ALL numbers (dates, stats, currency).
-                   - If a number doesn't match Master, report it.
+                 - **[CRITICAL] Numerical Check:** - Compare ALL numbers (dates, stats, currency, probabilities).
+                   - **Example:** If Master says "10/30" but Target says "11/1", REPORT IT.
+                   - **Example:** If Master says "prob 1%" but Target says "4%", REPORT IT.
 
-                 - **[CRITICAL] Handling Omissions:**
-                   - IF content exists in Master but is MISSING in Target:
-                   - `original`: "[[The specific Sentence/Paragraph from Master that is missing]]"
-                   - `current`: "⚠️ (MISSING CONTENT)"
-                   - `suggestion`: "[[Please translate and add this part]]"
-                   - `reason`: "Content omitted from Master file."
-                 - **Mapping Rule:** The `"original"` field MUST ALWAYS be the Korean text from Master.
+                 - **[CRITICAL] Handling Content Differences:**
+                   - If specific info exists in Master but is MISSING in Target -> Report as "⚠️ (MISSING CONTENT)".
+                   - If Target has EXTRA content (e.g., full patch notes instead of a link) -> Report as "ℹ️ (ADDED CONTENT - Localization)".
+                   - **Mapping Rule:** The `"original"` field MUST ALWAYS be the Korean text from Master.
             
             **[JSON Output Format]**
             {{
@@ -303,13 +300,13 @@ if analyze_btn:
                         "tone_comparison": "평가 (한국어)",
                         "cultural_nuance": "평가 (한국어)",
                         "critical_rewrite_needed": true/false, 
-                        "full_rewrite": "[[Only if Tone/Quality is bad]]",
+                        "full_rewrite": "[[Only if Garbage Quality]]",
                         "improvements": [
                             {{
                                 "original": "[[KOREAN TEXT]]", 
-                                "current": "[[TARGET TEXT or '⚠️ (MISSING CONTENT) ']]", 
+                                "current": "[[TARGET TEXT]]", 
                                 "suggestion": "[[CORRECTED TEXT]]", 
-                                "reason": "..."
+                                "reason": "Number Mismatch / Missing Content / Typo"
                             }}
                         ]
                     }}
@@ -388,3 +385,4 @@ if analyze_btn:
 
                 except Exception as e:
                     st.error(f"오류: {str(e)}")
+
