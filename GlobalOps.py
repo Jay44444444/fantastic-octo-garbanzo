@@ -249,7 +249,7 @@ if analyze_btn:
                 "4. **기준 제외:** 사용자가 선택한 Master Language 파일은 **절대 분석 대상에 포함하지 마라.** (Reference ONLY)"
             )
             
-            # 4. 유저 프롬프트 (현지화 구조 차이 허용 & 재작성 기준 완화)
+            # 4. 유저 프롬프트 (한국어 코멘트 강제 & 대소문자 관대함 적용)
             user_prompt = f"""
             [Uploaded Files]
             {files_context}
@@ -281,6 +281,9 @@ if analyze_btn:
                - **Step 2 (Detail Inspection & Numerical Check):**
                  - List `improvements` for typos, wrong terms, or **Missing Sentences**.
                  
+                 - **[RULE] Capitalization:** - **IGNORE** capitalization differences (e.g., 'element' vs 'Element', 'Guardian' vs 'guardian') unless it is a grammatical error (e.g., lowercase at the start of a sentence).
+                   - Do NOT report stylistic capitalization issues.
+
                  - **[CRITICAL] Numerical Check:** - Compare ALL numbers (dates, stats, currency, probabilities).
                    - **Example:** If Master says "10/30" but Target says "11/1", REPORT IT.
                    - **Example:** If Master says "prob 1%" but Target says "4%", REPORT IT.
@@ -306,7 +309,7 @@ if analyze_btn:
                                 "original": "[[KOREAN TEXT]]", 
                                 "current": "[[TARGET TEXT]]", 
                                 "suggestion": "[[CORRECTED TEXT]]", 
-                                "reason": "Number Mismatch / Missing Content / Typo"
+                                "reason": "[[MUST BE IN KOREAN]] (e.g. 날짜 불일치, 내용 누락, 오타 등)"
                             }}
                         ]
                     }}
@@ -385,4 +388,5 @@ if analyze_btn:
 
                 except Exception as e:
                     st.error(f"오류: {str(e)}")
+
 
